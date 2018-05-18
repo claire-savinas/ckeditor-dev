@@ -178,48 +178,39 @@
 	}
 
 	function getDataCallback( feed, mentions ) {
-		return CKEDITOR.tools.bind( dataCallback,  {
-			feed: feed,
-			marker: mentions.marker,
-			caseSensitive: mentions.caseSensitive,
-			throttle: mentions.throttle
-		} );
+		var scopeObj = {
+				feed: feed,
+				marker: mentions.marker,
+				caseSensitive: mentions.caseSensitive
+			},
+			buffer = new CKEDITOR.tools.eventsBuffer( mentions.throttle, dataCallback, scopeObj );
+
+		return function( query, range, callback ) {
+			scopeObj.query = query;
+			scopeObj.callback = callback;
+
+			buffer.input( query );
+		};
 	}
 
-	function dataCallback( query, range, callback ) {
-		var that = this;
+	function dataCallback() {
+		var that = this,
+			query = this.query;
 
 		// We are removing marker here to give clean query result for the endpoint callback.
 		if ( this.marker ) {
 			query = query.substring( 1 );
 		}
 
-		// Skip throttling if it has been disabled.
-		if ( this.throttle === null ) {
-			createFeed();
-		}
-
-		// Remove scheduled callback - it's no longer valid.
-		if ( this.scheduled ) {
-			clearTimeout( this.scheduled );
-		}
-
-		// Schedule callback so it will be fired after fixed throttle time (#1972).
-		this.scheduled = setTimeout( function() {
-			createFeed();
-		}, this.throttle );
-
-		function createFeed() {
-			if ( CKEDITOR.tools.array.isArray( that.feed ) ) {
-				createArrayFeed();
-			} else if ( typeof that.feed === 'string' ) {
-				createUrlFeed();
-			} else {
-				that.feed( {
-					query: query,
-					marker: that.marker
-				}, resolveCallbackData );
-			}
+		if ( CKEDITOR.tools.array.isArray( that.feed ) ) {
+			createArrayFeed();
+		} else if ( typeof that.feed === 'string' ) {
+			createUrlFeed();
+		} else {
+			that.feed( {
+				query: query,
+				marker: that.marker
+			}, resolveCallbackData );
 		}
 
 		function createArrayFeed() {
@@ -265,7 +256,7 @@
 				return CKEDITOR.tools.object.merge( item, { name: name } );
 			} );
 
-			callback( newData );
+			that.callback( newData );
 		}
 	}
 
