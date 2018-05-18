@@ -19,10 +19,6 @@
 		init: function( editor ) {
 			var cls = editor.config.mathJaxClass || 'math-tex';
 
-			if ( !editor.config.mathJaxLib ) {
-				CKEDITOR.error( 'mathjax-no-config' );
-			}
-
 			editor.widgets.add( 'mathjax', {
 				inline: true,
 				dialog: 'mathjax',
@@ -130,7 +126,9 @@
 			editor.on( 'contentPreview', function( evt ) {
 				evt.data.dataValue = evt.data.dataValue.replace(
 					/<\/head>/,
-					'<script src="' + CKEDITOR.getUrl( editor.config.mathJaxLib ) + '"><\/script><\/head>'
+					'<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.css" integrity="sha384-TEMocfGvRuD1rIAacqrknm5BQZ7W7uWitoih+jMNFXQIbNl16bO8OZmylH/Vi/Ei" crossorigin="anonymous">' +
+					'<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.js" integrity="sha384-jmxIlussZWB7qCuB+PgKG1uLjjxbVVIayPJwi6cG6Zb4YKq0JIw+OMnkkEC7kYCq" crossorigin="anonymous"></script>' +
+					'<\/head>'
 				);
 			} );
 
@@ -304,13 +302,7 @@
 							'<html>' +
 							'<head>' +
 								'<meta charset="utf-8">' +
-								'<script type="text/x-mathjax-config">' +
-
-									// MathJax configuration, disable messages.
-									'MathJax.Hub.Config( {' +
-										'showMathMenu: false,' +
-										'messageStyle: "none"' +
-									'} );' +
+								'<script>' +
 
 									// Get main CKEDITOR form parent.
 									'function getCKE() {' +
@@ -324,23 +316,25 @@
 									// Run MathJax.Hub with its actual parser and call callback function after that.
 									// Because MathJax.Hub is asynchronous create MathJax.Hub.Queue to wait with callback.
 									'function update() {' +
-										'MathJax.Hub.Queue(' +
-											'[ \'Typeset\', MathJax.Hub, this.buffer ],' +
-											'function() {' +
-												'getCKE().tools.callFunction( ' + updateDoneHandler + ' );' +
-											'}' +
-										');' +
+										'var toRender = getCKE().plugins.mathjax.trim(this.buffer.innerText);' +
+										'try {' +
+											'katex.render(toRender, this.buffer);' +
+										'} catch(e) {' +
+											'this.buffer.innerHTML = toRender;' +
+										'}' +
+										'getCKE().tools.callFunction( ' + updateDoneHandler + ' );' +
 									'}' +
 
 									// Run MathJax for the first time, when the script is loaded.
 									// Callback function will be called then it's done.
-									'MathJax.Hub.Queue( function() {' +
+									'window.onload = function() {' +
 										'getCKE().tools.callFunction(' + loadedHandler + ');' +
-									'} );' +
+									'};' +
 								'</script>' +
 
 								// Load MathJax lib.
-								'<script src="' + ( editor.config.mathJaxLib ) + '"></script>' +
+								'<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.css" integrity="sha384-TEMocfGvRuD1rIAacqrknm5BQZ7W7uWitoih+jMNFXQIbNl16bO8OZmylH/Vi/Ei" crossorigin="anonymous">' +
+								'<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.js" integrity="sha384-jmxIlussZWB7qCuB+PgKG1uLjjxbVVIayPJwi6cG6Zb4YKq0JIw+OMnkkEC7kYCq" crossorigin="anonymous"></script>' +
 							'</head>' +
 							'<body style="padding:0;margin:0;background:transparent;overflow:hidden">' +
 								'<span id="preview"></span>' +
@@ -353,6 +347,7 @@
 
 			// Run MathJax parsing Tex.
 			function update() {
+
 				isRunning = true;
 
 				value = newValue;
